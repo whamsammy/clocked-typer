@@ -462,7 +462,6 @@
       <div class="wpm-big" id="resultWpm">—</div>
       <div class="wpm-label">words per minute</div>
       <div class="pb-banner hidden" id="pbBanner">🏆 new personal best!</div>
-      <canvas id="wpmGraph" width="580" height="80" style="width:100%;max-width:580px;margin-bottom:28px;opacity:0.85;"></canvas>
       <div class="results-stats">
         <div class="result-card">
           <div class="result-card-val" id="resultWords">—</div>
@@ -619,10 +618,6 @@ let gameStartTime = null;
 // Row tracking
 let wordRowMap = [], rowTopMap = [], lineHeight = 36, displayedRow = 0;
 
-// WPM history for sparkline (one sample per second)
-let wpmHistory = [];
-let lastWpmSample = 0;
-
 // Smoothed WPM (rolling 10s window)
 let wordTimestamps = []; // timestamps of each correctly typed word
 
@@ -687,7 +682,7 @@ function setupGame() {
 
   wordIndex = 0; correctCount = 0;
   displayedRow = 0; wordRowMap = []; rowTopMap = [];
-  wpmHistory = []; lastWpmSample = 0; wordTimestamps = [];
+  wordTimestamps = [];
   timeLeft = 60; gameActive = false;
 
   document.getElementById('timerDisplay').textContent = '60';
@@ -788,13 +783,6 @@ function startGame() {
 
     // Smoothed live WPM
     document.getElementById('liveWpm').textContent = smoothWpm();
-
-    // Sample WPM every second for sparkline
-    const secElapsed = Math.floor(elapsed);
-    if (secElapsed > lastWpmSample) {
-      lastWpmSample = secElapsed;
-      wpmHistory.push(smoothWpm());
-    }
 
     if (timeLeft <= 10) disp.classList.add('urgent');
     if (timeLeft <= 0)  endGame();
@@ -915,9 +903,6 @@ function endGame() {
       banner.classList.add('hidden');
     }
 
-    // Sparkline
-    drawSparkline(wpmHistory, finalWpm);
-
     let rating = ratings[0][1];
     for (let i = ratings.length - 1; i >= 0; i--) {
       if (finalWpm >= ratings[i][0]) { rating = ratings[i][1]; break; }
@@ -925,52 +910,6 @@ function endGame() {
     document.getElementById('ratingLine').textContent = `"${rating}"`;
     showScreen('screen-results');
   }, 300);
-}
-
-function drawSparkline(history, finalWpm) {
-  const canvas = document.getElementById('wpmGraph');
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
-  if (history.length < 2) return;
-
-  const max = Math.max(...history, finalWpm, 10);
-  const pad = 8;
-  const pts = history.map((v, i) => ({
-    x: pad + (i / (history.length - 1)) * (W - pad * 2),
-    y: H - pad - (v / max) * (H - pad * 2)
-  }));
-
-  // Fill gradient
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, 'rgba(232,104,32,0.3)');
-  grad.addColorStop(1, 'rgba(232,104,32,0)');
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, H);
-  pts.forEach(p => ctx.lineTo(p.x, p.y));
-  ctx.lineTo(pts[pts.length-1].x, H);
-  ctx.closePath();
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  // Line
-  ctx.beginPath();
-  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-  ctx.strokeStyle = '#e86820';
-  ctx.lineWidth = 2;
-  ctx.lineJoin = 'round';
-  ctx.stroke();
-
-  // Labels
-  ctx.fillStyle = '#8a909e';
-  ctx.font = '10px Space Mono, monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText('0s', pad, H - 1);
-  ctx.textAlign = 'right';
-  ctx.fillText('60s', W - pad, H - 1);
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#e86820';
-  ctx.fillText(`peak ${Math.max(...history)} wpm`, W / 2, 12);
 }
 
 function retryGame() { beginCountdown(); }
