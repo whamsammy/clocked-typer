@@ -455,7 +455,7 @@
         </div>
         <div class="result-card">
           <div class="result-card-val" id="resultCorrect">—</div>
-          <div class="result-card-label">correct keystrokes</div>
+          <div class="result-card-label">correct words</div>
         </div>
       </div>
       <div class="rating-line" id="ratingLine"></div>
@@ -596,6 +596,7 @@ let currentLang = 'en';
 let currentWords = [], wordIndex = 0, correctCount = 0;
 let totalKeystrokes = 0, errorKeystrokes = 0;
 let timeLeft = 60, timerInterval = null, gameActive = false;
+let gameStartTime = null; // real wall-clock start
 
 // Row tracking — all pre-calculated after render, never read live DOM during play
 let wordRowMap = [];   // wordRowMap[i] = row number of word i
@@ -734,19 +735,21 @@ function scrollIfRowComplete() {
 
 function startGame() {
   gameActive = true;
+  gameStartTime = Date.now();
   const input = document.getElementById('typingInput');
   input.focus(); input.disabled = false;
 
   timerInterval = setInterval(() => {
-    timeLeft--;
+    const elapsed = (Date.now() - gameStartTime) / 1000;
+    timeLeft = Math.max(0, 60 - elapsed);
     const disp = document.getElementById('timerDisplay');
-    disp.textContent = timeLeft;
-    document.getElementById('progressBar').style.width = `${((60 - timeLeft) / 60) * 100}%`;
-    const elapsed = (60 - timeLeft) / 60;
-    document.getElementById('liveWpm').textContent = elapsed > 0 ? Math.round(correctCount / elapsed) : 0;
+    disp.textContent = Math.ceil(timeLeft);
+    document.getElementById('progressBar').style.width = `${(elapsed / 60) * 100}%`;
+    const elapsedMins = elapsed / 60;
+    document.getElementById('liveWpm').textContent = elapsedMins > 0 ? Math.round(correctCount / elapsedMins) : 0;
     if (timeLeft <= 10) disp.classList.add('urgent');
     if (timeLeft <= 0)  endGame();
-  }, 1000);
+  }, 200); // poll every 200ms for smoother countdown and more accurate cutoff
 
   input.addEventListener('keydown', handleKeydown);
   input.addEventListener('input',   handleInput);
@@ -760,13 +763,16 @@ function handleKeydown(e) {
     const input = document.getElementById('typingInput');
     const typed = input.value.trim();
     if (!typed) { input.value = ''; return; }
-    if (typed !== currentWords[wordIndex]) {
-      errorKeystrokes++;
-      input.classList.add('error');
-      return;
+
+    const el = document.getElementById(`word-${wordIndex}`);
+    if (typed === currentWords[wordIndex]) {
+      correctCount++;
+      el.className = 'word correct';
+    } else {
+      // Wrong word — mark red and move on (standard typing test behaviour)
+      el.className = 'word incorrect';
     }
-    document.getElementById(`word-${wordIndex}`).className = 'word correct';
-    correctCount++;
+
     wordIndex++;
     input.value = '';
     input.classList.remove('error');
@@ -807,15 +813,17 @@ function endGame() {
   input.removeEventListener('keydown', handleKeydown);
   input.removeEventListener('input',   handleInput);
 
-  const acc = totalKeystrokes > 0
-    ? Math.max(0, Math.round(((totalKeystrokes - errorKeystrokes) / totalKeystrokes) * 100))
+  const actualElapsedMins = (Date.now() - gameStartTime) / 60000;
+  const finalWpm = actualElapsedMins > 0 ? Math.round(correctCount / actualElapsedMins) : 0;
+  const acc = wordIndex > 0
+    ? Math.round((correctCount / wordIndex) * 100)
     : 100;
 
   setTimeout(() => {
-    document.getElementById('resultWpm').textContent      = correctCount;
+    document.getElementById('resultWpm').textContent      = finalWpm;
     document.getElementById('resultWords').textContent    = wordIndex;
     document.getElementById('resultAccuracy').textContent = `${acc}%`;
-    document.getElementById('resultCorrect').textContent  = `${totalKeystrokes - errorKeystrokes}/${totalKeystrokes}`;
+    document.getElementById('resultCorrect').textContent  = `${correctCount}/${wordIndex}`;
     let rating = ratings[0][1];
     for (let i = ratings.length - 1; i >= 0; i--) {
       if (correctCount >= ratings[i][0]) { rating = ratings[i][1]; break; }
