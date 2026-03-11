@@ -221,8 +221,24 @@
   }
   .word { display:inline-block; margin-right:8px; border-radius:4px; padding:1px 2px; transition:color 0.12s; }
   .word.correct  { color:var(--orange); }
-  .word.incorrect{ color:var(--error); background:var(--error-dim); }
-  .word.current  { color:var(--silver-light); border-bottom:2px solid var(--orange); }
+  .word.incorrect{ color:#cc1111; font-weight:700; }
+  .word.current  { color:var(--silver-light); background:rgba(30,32,40,0.07); border-radius:4px; padding:1px 4px; }
+  /* character-level coloring inside current word */
+  .char-done { color:var(--orange); }
+  .char-pending { color:var(--mid); }
+
+  .input-row-hints { display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+  .input-hint { font-size:9px; letter-spacing:0.18em; color:var(--mid); text-transform:lowercase; }
+  .capslock-warn { font-size:9px; letter-spacing:0.15em; color:var(--error); text-transform:lowercase; font-weight:700; }
+  .capslock-warn.hidden { display:none; }
+
+  .pb-banner {
+    font-size:11px; letter-spacing:0.2em; text-transform:lowercase;
+    color:var(--orange); margin-bottom:12px; animation:fadeUp 0.5s ease both;
+  }
+  .pb-banner.hidden { display:none; }
+
+  @keyframes pbPop { 0%{transform:scale(0.8);opacity:0} 70%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
 
   .input-area { width:100%; max-width:900px; }
   .typing-input {
@@ -370,8 +386,6 @@
     <h1 class="hero-title">
       <span class="orange-text">clocked</span>
     </h1>
-    <p class="hero-subtitle">typing game</p>
-
     <p class="hero-sub-tag">how fast are you, really?</p>
 
     <div class="section-label">choose language</div>
@@ -431,7 +445,10 @@
       <input type="text" class="typing-input" id="typingInput"
         placeholder="start typing here…"
         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <div class="input-hint">space to confirm · backspace to correct</div>
+      <div class="input-row-hints">
+        <div class="input-hint">space to confirm · backspace to correct · tab to restart</div>
+        <div class="capslock-warn hidden" id="capslockWarn">⚠ caps lock is on</div>
+      </div>
     </div>
   </div>
 
@@ -444,6 +461,8 @@
       <h2 class="results-title">you got <em>clocked</em></h2>
       <div class="wpm-big" id="resultWpm">—</div>
       <div class="wpm-label">words per minute</div>
+      <div class="pb-banner hidden" id="pbBanner">🏆 new personal best!</div>
+      <canvas id="wpmGraph" width="580" height="80" style="width:100%;max-width:580px;margin-bottom:28px;opacity:0.85;"></canvas>
       <div class="results-stats">
         <div class="result-card">
           <div class="result-card-val" id="resultWords">—</div>
@@ -594,15 +613,18 @@ const langMeta = {
 
 let currentLang = 'en';
 let currentWords = [], wordIndex = 0, correctCount = 0;
-let totalKeystrokes = 0, errorKeystrokes = 0;
 let timeLeft = 60, timerInterval = null, gameActive = false;
-let gameStartTime = null; // real wall-clock start
+let gameStartTime = null;
 
-// Row tracking — all pre-calculated after render, never read live DOM during play
-let wordRowMap = [];   // wordRowMap[i] = row number of word i
-let rowTopMap = [];    // rowTopMap[r] = offsetTop of that row
-let lineHeight = 36;
-let displayedRow = 0; // which row is currently at the top of the box
+// Row tracking
+let wordRowMap = [], rowTopMap = [], lineHeight = 36, displayedRow = 0;
+
+// WPM history for sparkline (one sample per second)
+let wpmHistory = [];
+let lastWpmSample = 0;
+
+// Smoothed WPM (rolling 10s window)
+let wordTimestamps = []; // timestamps of each correctly typed word
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -626,11 +648,13 @@ function beginCountdown() {
   overlay.classList.remove('hidden');
   let count = 3;
   numEl.textContent = count;
+  numEl.style.animation = 'none'; numEl.offsetHeight; numEl.style.animation = 'countPop 0.9s ease both';
 
   const iv = setInterval(() => {
     count--;
     if (count === 0) {
       numEl.textContent = 'go!';
+      numEl.style.animation = 'none'; numEl.offsetHeight; numEl.style.animation = 'countPop 0.9s ease both';
     } else if (count < 0) {
       clearInterval(iv);
       overlay.classList.add('hidden');
@@ -645,13 +669,25 @@ function beginCountdown() {
 function setupGame() {
   const meta = langMeta[currentLang];
   document.getElementById('langBadge').textContent = `${meta.flag} ${meta.name} · click to change`;
+
   const bank = wordBanks[currentLang] || wordBanks.en;
-  currentWords = Array.from({length:250}, () => bank[Math.floor(Math.random()*bank.length)]);
+  currentWords = [];
+  while (currentWords.length < 250) {
+    const shuffled = [...bank];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    shuffled.forEach(w => {
+      if (currentWords.length === 0 || w !== currentWords[currentWords.length - 1])
+        currentWords.push(w);
+    });
+  }
+  currentWords = currentWords.slice(0, 250);
 
   wordIndex = 0; correctCount = 0;
-  totalKeystrokes = 0; errorKeystrokes = 0;
-  displayedRow = 0;
-  wordRowMap = []; rowTopMap = [];
+  displayedRow = 0; wordRowMap = []; rowTopMap = [];
+  wpmHistory = []; lastWpmSample = 0; wordTimestamps = [];
   timeLeft = 60; gameActive = false;
 
   document.getElementById('timerDisplay').textContent = '60';
@@ -671,66 +707,70 @@ function setupGame() {
 
 function renderWords() {
   const display = document.getElementById('wordsDisplay');
-  display.innerHTML = currentWords.map((w,i) => `<span class="word" id="word-${i}">${w}</span>`).join('');
+  display.innerHTML = currentWords.map((w, i) =>
+    `<span class="word" id="word-${i}">${w}</span>`
+  ).join('');
 
-  // Wait two frames for layout to settle, then snapshot all positions
   requestAnimationFrame(() => requestAnimationFrame(() => {
     buildRowMaps();
-    highlightCurrentWord();
+    setCurrentWord();
   }));
 }
 
 function buildRowMaps() {
-  wordRowMap = [];
-  rowTopMap  = [];
+  wordRowMap = []; rowTopMap = [];
   let prevTop = -1, rowNum = -1;
-
   document.querySelectorAll('.word').forEach((el, i) => {
     const top = el.offsetTop;
-    if (top !== prevTop) {
-      rowNum++;
-      rowTopMap[rowNum] = top;
-      prevTop = top;
-    }
+    if (top !== prevTop) { rowNum++; rowTopMap[rowNum] = top; prevTop = top; }
     wordRowMap[i] = rowNum;
   });
+  if (rowTopMap.length >= 2) lineHeight = rowTopMap[1] - rowTopMap[0];
+}
 
-  // Measure line height from first two distinct rows
-  if (rowTopMap.length >= 2) {
-    lineHeight = rowTopMap[1] - rowTopMap[0];
+// Render the current word with per-character coloring based on what's been typed
+function setCurrentWord(typed) {
+  const el = document.getElementById(`word-${wordIndex}`);
+  if (!el) return;
+  const word = currentWords[wordIndex] || '';
+  if (!typed) {
+    // No typing yet — render all chars as pending, highlight the word
+    el.className = 'word current';
+    el.innerHTML = word.split('').map(c => `<span class="char-pending">${c}</span>`).join('');
+  } else {
+    el.className = 'word current';
+    el.innerHTML = word.split('').map((c, i) => {
+      if (i < typed.length) {
+        return `<span class="char-done">${c}</span>`;
+      }
+      return `<span class="char-pending">${c}</span>`;
+    }).join('');
   }
 }
 
-function highlightCurrentWord() {
-  // Update only a window of nearby words for performance
-  const start = Math.max(0, wordIndex - 5);
-  const end   = Math.min(currentWords.length, wordIndex + 40);
-  for (let i = start; i < end; i++) {
-    const el = document.getElementById(`word-${i}`);
-    if (!el) continue;
-    el.className = 'word';
-    if (i < wordIndex)      el.classList.add('correct');
-    else if (i === wordIndex) el.classList.add('current');
-  }
+function highlightCurrentWord(typed) {
+  // Mark the new current word, never touch completed words
+  setCurrentWord(typed);
 }
 
 function scrollIfRowComplete() {
-  // Only scroll the display when the current word is on a NEW row
-  // compared to what's currently shown at the top
   const currentWordRow = wordRowMap[wordIndex] ?? 0;
-
-  // We want the CURRENT word's row to always be visible in the box.
-  // The box shows rows starting from displayedRow.
-  // The box is 148px tall and shows ~4 rows.
-  // Scroll when the current word moves to row displayedRow + 2 (i.e. row 2 is finishing)
-  // so that row 3 becomes the new top — keeping at least 2 rows always ahead.
   if (currentWordRow > displayedRow + 1) {
     displayedRow = currentWordRow - 1;
     const display = document.getElementById('wordsDisplay');
     const scrollTo = rowTopMap[displayedRow] ?? 0;
     display.style.transition = 'margin-top 0.25s ease';
-    display.style.marginTop  = `-${scrollTo}px`;
+    display.style.marginTop = `-${scrollTo}px`;
   }
+}
+
+function smoothWpm() {
+  // Rolling 10-second window
+  const now = Date.now();
+  const windowMs = 10000;
+  wordTimestamps = wordTimestamps.filter(t => now - t < windowMs);
+  const windowMins = Math.min((now - gameStartTime), windowMs) / 60000;
+  return windowMins > 0 ? Math.round(wordTimestamps.length / windowMins) : 0;
 }
 
 function startGame() {
@@ -745,18 +785,46 @@ function startGame() {
     const disp = document.getElementById('timerDisplay');
     disp.textContent = Math.ceil(timeLeft);
     document.getElementById('progressBar').style.width = `${(elapsed / 60) * 100}%`;
-    const elapsedMins = elapsed / 60;
-    document.getElementById('liveWpm').textContent = elapsedMins > 0 ? Math.round(correctCount / elapsedMins) : 0;
+
+    // Smoothed live WPM
+    document.getElementById('liveWpm').textContent = smoothWpm();
+
+    // Sample WPM every second for sparkline
+    const secElapsed = Math.floor(elapsed);
+    if (secElapsed > lastWpmSample) {
+      lastWpmSample = secElapsed;
+      wpmHistory.push(smoothWpm());
+    }
+
     if (timeLeft <= 10) disp.classList.add('urgent');
     if (timeLeft <= 0)  endGame();
-  }, 200); // poll every 200ms for smoother countdown and more accurate cutoff
+  }, 200);
 
   input.addEventListener('keydown', handleKeydown);
   input.addEventListener('input',   handleInput);
+  input.addEventListener('keyup',   handleCapsLock);
+}
+
+function handleCapsLock(e) {
+  const warn = document.getElementById('capslockWarn');
+  if (e.getModifierState && e.getModifierState('CapsLock')) {
+    warn.classList.remove('hidden');
+  } else {
+    warn.classList.add('hidden');
+  }
 }
 
 function handleKeydown(e) {
   if (!gameActive) return;
+
+  // Tab to restart — cleanly abort and restart without showing results
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    gameActive = false;
+    clearInterval(timerInterval);
+    beginCountdown();
+    return;
+  }
 
   if (e.key === ' ') {
     e.preventDefault();
@@ -767,16 +835,19 @@ function handleKeydown(e) {
     const el = document.getElementById(`word-${wordIndex}`);
     if (typed === currentWords[wordIndex]) {
       correctCount++;
+      wordTimestamps.push(Date.now());
+      // Restore plain text (remove char spans) before marking correct
+      el.innerHTML = currentWords[wordIndex];
       el.className = 'word correct';
     } else {
-      // Wrong word — mark red and move on (standard typing test behaviour)
+      el.innerHTML = currentWords[wordIndex];
       el.className = 'word incorrect';
     }
 
     wordIndex++;
     input.value = '';
     input.classList.remove('error');
-    highlightCurrentWord();
+    highlightCurrentWord('');
     scrollIfRowComplete();
     if (wordIndex >= currentWords.length) endGame();
   }
@@ -788,10 +859,11 @@ function handleInput(e) {
   const typed    = input.value;
   const expected = currentWords[wordIndex];
 
+  // Update per-character highlighting
+  setCurrentWord(typed);
+
   if (e.inputType === 'insertText' || e.inputType === 'insertCompositionText') {
-    totalKeystrokes++;
     if (!expected.startsWith(typed)) {
-      errorKeystrokes++;
       input.classList.add('error');
     } else {
       input.classList.remove('error');
@@ -812,28 +884,104 @@ function endGame() {
   input.disabled = true;
   input.removeEventListener('keydown', handleKeydown);
   input.removeEventListener('input',   handleInput);
+  input.removeEventListener('keyup',   handleCapsLock);
+  document.getElementById('capslockWarn').classList.add('hidden');
 
   const actualElapsedMins = (Date.now() - gameStartTime) / 60000;
   const finalWpm = actualElapsedMins > 0 ? Math.round(correctCount / actualElapsedMins) : 0;
-  const acc = wordIndex > 0
-    ? Math.round((correctCount / wordIndex) * 100)
-    : 100;
+  const acc = wordIndex > 0 ? Math.round((correctCount / wordIndex) * 100) : 0;
+
+  // Personal best
+  const pbKey = `clocked_pb_${currentLang}`;
+  const prevBest = parseInt(localStorage.getItem(pbKey) || '0', 10);
+  const isNewPb = finalWpm > prevBest;
+  if (isNewPb) localStorage.setItem(pbKey, finalWpm);
 
   setTimeout(() => {
     document.getElementById('resultWpm').textContent      = finalWpm;
     document.getElementById('resultWords').textContent    = wordIndex;
     document.getElementById('resultAccuracy').textContent = `${acc}%`;
     document.getElementById('resultCorrect').textContent  = `${correctCount}/${wordIndex}`;
+
+    // PB banner
+    const banner = document.getElementById('pbBanner');
+    if (isNewPb && finalWpm > 0) {
+      banner.textContent = prevBest > 0
+        ? `🏆 new personal best! (was ${prevBest})`
+        : `🏆 first score recorded — beat it next time!`;
+      banner.classList.remove('hidden');
+      banner.style.animation = 'none'; banner.offsetHeight; banner.style.animation = 'pbPop 0.5s ease both';
+    } else {
+      banner.classList.add('hidden');
+    }
+
+    // Sparkline
+    drawSparkline(wpmHistory, finalWpm);
+
     let rating = ratings[0][1];
     for (let i = ratings.length - 1; i >= 0; i--) {
-      if (correctCount >= ratings[i][0]) { rating = ratings[i][1]; break; }
+      if (finalWpm >= ratings[i][0]) { rating = ratings[i][1]; break; }
     }
     document.getElementById('ratingLine').textContent = `"${rating}"`;
     showScreen('screen-results');
   }, 300);
 }
 
+function drawSparkline(history, finalWpm) {
+  const canvas = document.getElementById('wpmGraph');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  if (history.length < 2) return;
+
+  const max = Math.max(...history, finalWpm, 10);
+  const pad = 8;
+  const pts = history.map((v, i) => ({
+    x: pad + (i / (history.length - 1)) * (W - pad * 2),
+    y: H - pad - (v / max) * (H - pad * 2)
+  }));
+
+  // Fill gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, 'rgba(232,104,32,0.3)');
+  grad.addColorStop(1, 'rgba(232,104,32,0)');
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, H);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(pts[pts.length-1].x, H);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = '#e86820';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // Labels
+  ctx.fillStyle = '#8a909e';
+  ctx.font = '10px Space Mono, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('0s', pad, H - 1);
+  ctx.textAlign = 'right';
+  ctx.fillText('60s', W - pad, H - 1);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e86820';
+  ctx.fillText(`peak ${Math.max(...history)} wpm`, W / 2, 12);
+}
+
 function retryGame() { beginCountdown(); }
+
+// Tab-to-restart works on results screen only
+document.addEventListener('keydown', e => {
+  if (e.key === 'Tab' && document.getElementById('screen-results').classList.contains('active')) {
+    e.preventDefault();
+    beginCountdown();
+  }
+});
 
 showScreen('screen-lang');
 </script>
