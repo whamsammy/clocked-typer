@@ -157,7 +157,7 @@
   /* ══════════ GAME ══════════ */
   .game-header {
     display:flex; align-items:center; justify-content:space-between;
-    width:100%; max-width:720px; margin-bottom:20px;
+    width:100%; max-width:900px; margin-bottom:20px;
   }
   .game-title {
     font-family:'DM Serif Display',serif; font-size:20px; font-weight:400;
@@ -170,6 +170,13 @@
     -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
   }
 
+  .live-wpm-display {
+    font-size:36px; font-weight:700;
+    color: #6a7080;
+    letter-spacing:-0.02em; min-width:56px; text-align:center;
+    transition: color 0.4s;
+  }
+
   .timer-display {
     font-size:36px; font-weight:700; color:var(--orange);
     letter-spacing:-0.02em; min-width:56px; text-align:right;
@@ -178,7 +185,7 @@
   .timer-display.urgent { color:var(--error); text-shadow:0 0 20px rgba(224,80,80,0.4); animation:urgentPulse 0.8s ease-in-out infinite; }
 
   .progress-bar-wrap {
-    width:100%; max-width:720px; height:2px;
+    width:100%; max-width:900px; height:2px;
     background:var(--surface3); border-radius:2px; margin-bottom:18px; overflow:hidden;
   }
   .progress-bar-fill {
@@ -189,11 +196,11 @@
   }
 
   .words-container {
-    width:100%; max-width:720px;
+    width:100%; max-width:900px;
     background:var(--surface);
     border:1px solid var(--border);
-    border-radius:16px; padding:24px 28px;
-    margin-bottom:16px; position:relative; overflow:hidden; height:112px;
+    border-radius:16px; padding:28px 36px;
+    margin-bottom:16px; position:relative; overflow:hidden; height:148px;
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.4);
   }
   .words-container::before {
@@ -217,7 +224,7 @@
   .word.incorrect{ color:var(--error); background:var(--error-dim); }
   .word.current  { color:var(--silver-light); border-bottom:2px solid var(--orange); }
 
-  .input-area { width:100%; max-width:720px; }
+  .input-area { width:100%; max-width:900px; }
   .typing-input {
     width:100%;
     background:var(--surface);
@@ -247,20 +254,21 @@
   /* ══════════ COUNTDOWN ══════════ */
   .countdown-overlay {
     position:fixed; inset:0;
-    background:rgba(232,234,238,0.92);
+    background: var(--bg);
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    z-index:100; backdrop-filter:blur(8px);
+    z-index:100;
   }
   .countdown-overlay.hidden { display:none; }
   .countdown-number {
     font-family:'DM Serif Display',serif;
-    font-size:clamp(120px,30vw,200px); font-weight:400; line-height:1;
+    font-size:clamp(100px,18vw,160px); font-weight:400; line-height:1.3;
+    padding: 0 20px 16px;
     background:linear-gradient(135deg,#ffb070 0%,var(--orange) 50%,#ff6820 100%);
     -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
     filter:drop-shadow(0 0 40px rgba(240,112,48,0.5));
     animation:countPop 0.9s ease both;
   }
-  .countdown-label { font-size:11px; letter-spacing:0.3em; color:var(--mid); text-transform:lowercase; margin-top:16px; }
+  .countdown-label { font-size:11px; letter-spacing:0.3em; color:var(--mid); text-transform:lowercase; margin-top:32px; }
 
   /* ══════════ RESULTS ══════════ */
   .results-wrap { width:100%; max-width:580px; text-align:center; }
@@ -274,7 +282,8 @@
 
   .results-title {
     font-family:'DM Serif Display',serif;
-    font-size:clamp(36px,8vw,64px); font-weight:400; line-height:1.1; margin-bottom:12px;
+    font-size:clamp(36px,8vw,64px); font-weight:400; line-height:1.4; margin-bottom:12px;
+    padding-bottom:6px;
     background:linear-gradient(135deg,#1e2028,#5a6070);
     -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
   }
@@ -400,9 +409,15 @@
         <div class="game-title"><em>clocked</em></div>
         <div id="langBadge" class="lang-badge" onclick="goToLang()">🌐 english · click to change</div>
       </div>
-      <div style="text-align:right;">
-        <div class="timer-display" id="timerDisplay">60</div>
-        <div style="font-size:9px;color:var(--mid);letter-spacing:0.2em;text-transform:lowercase;margin-top:2px;">seconds left</div>
+      <div style="display:flex;gap:32px;align-items:flex-end;">
+        <div style="text-align:center;">
+          <div class="live-wpm-display" id="liveWpm">0</div>
+          <div style="font-size:9px;color:var(--mid);letter-spacing:0.2em;text-transform:lowercase;margin-top:2px;">wpm</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="timer-display" id="timerDisplay">60</div>
+          <div style="font-size:9px;color:var(--mid);letter-spacing:0.2em;text-transform:lowercase;margin-top:2px;">seconds left</div>
+        </div>
       </div>
     </div>
 
@@ -440,7 +455,7 @@
         </div>
         <div class="result-card">
           <div class="result-card-val" id="resultCorrect">—</div>
-          <div class="result-card-label">correct</div>
+          <div class="result-card-label">correct keystrokes</div>
         </div>
       </div>
       <div class="rating-line" id="ratingLine"></div>
@@ -463,50 +478,100 @@
 <script>
 const wordBanks = {
   en: [
-    "the","be","to","of","and","a","in","that","have","it","for","not","on","with","he","as","you","do","at",
-    "this","but","his","by","from","they","we","say","her","she","or","an","will","my","one","all","would","there",
-    "their","what","so","up","out","if","about","who","get","which","go","me","when","make","can","like","time","no",
-    "just","him","know","take","people","into","year","your","good","some","could","them","see","other","than","then",
-    "now","look","only","come","its","over","think","also","back","after","use","two","how","our","work","first","well",
-    "way","even","new","want","because","any","these","give","day","most","great","little","very","still","name","should",
-    "home","big","under","never","last","long","right","move","place","thing","hand","high","every","near","food","between",
-    "school","keep","feet","land","side","without","once","life","enough","sometimes","head","above","kind","almost","live",
-    "page","earth","need","far","hold","close","open","walk","paper","often","always","music","both","book","until","mile",
-    "river","car","city","tree","since","hard","start","might","story","left","few","while","along","next","white","air"
+    "time","year","people","way","day","man","woman","child","world","life","hand","part","place","case","week",
+    "company","system","program","question","work","government","number","night","point","home","water","room",
+    "mother","area","money","story","fact","month","lot","right","study","book","eye","job","word","business",
+    "issue","side","kind","head","house","service","friend","father","power","hour","game","line","end","among",
+    "close","thing","example","heart","state","body","information","country","family","face","problem","voice",
+    "mind","street","history","door","health","personal","open","school","given","name","food","front","common",
+    "city","space","ground","form","air","center","force","car","turn","type","phone","office","ago","light",
+    "cost","black","project","short","surface","below","color","clear","deep","seem","keep","local","change",
+    "social","strong","size","rate","reason","large","later","high","early","economic","loss","market","process",
+    "blood","price","note","period","music","real","human","remember","hold","stand","build","value","bring",
+    "happen","write","provide","sit","stand","lose","include","continue","set","learn","feel","create","lead",
+    "believe","follow","start","meet","kill","allow","win","consider","become","leave","put","mean","keep","let",
+    "begin","seem","help","show","hear","play","run","move","live","walk","draw","focus","drive","fall","rise",
+    "speak","agree","appear","describe","plan","explain","offer","read","spend","grow","open","win","ask","love",
+    "approach","carry","break","manage","sleep","watch","reduce","return","claim","require","report","develop",
+    "raise","control","remember","press","mention","decide","need","increase","suggest","apply","serve","cover",
+    "support","reach","cut","turn","stay","call","receive","send","choose","pass","close","complete","attempt",
+    "produce","accept","expect","affect","allow","cause","prove","remain","represent","face","form","include"
   ],
   es: [
-    "el","la","los","las","un","una","de","en","y","que","a","es","por","con","no","se","lo","como","más","pero",
-    "sus","le","ya","o","este","porque","esta","entre","cuando","muy","sin","sobre","también","me","hasta","hay",
-    "donde","desde","todo","nos","durante","todos","uno","les","ni","otros","ese","eso","ellos","tiempo","vida",
-    "casa","trabajo","mundo","persona","mujer","hombre","día","parte","lugar","forma","año","agua","bien","poder",
-    "nuevo","amor","manera","ciudad","decir","hacer","ser","estar","tener","dar","ver","querer","llegar","pasar",
-    "poner","seguir","encontrar","llamar","venir","pensar","salir","volver","tomar","saber","cada","mismo","tanto"
+    "tiempo","año","persona","manera","día","hombre","mujer","niño","mundo","vida","mano","parte","lugar","caso",
+    "semana","empresa","sistema","pregunta","trabajo","gobierno","número","noche","punto","casa","agua","cuarto",
+    "madre","zona","dinero","historia","hecho","mes","derecho","estudio","libro","ojo","empleo","palabra","negocio",
+    "tema","lado","tipo","cabeza","servicio","amigo","padre","poder","hora","juego","línea","fin","ejemplo","corazón",
+    "estado","cuerpo","información","país","familia","cara","problema","voz","mente","calle","puerta","salud",
+    "escuela","nombre","comida","frente","ciudad","espacio","suelo","forma","aire","centro","fuerza","coche",
+    "turno","tipo","teléfono","oficina","luz","costo","negro","proyecto","corto","color","claro","profundo",
+    "social","fuerte","tamaño","razón","grande","alto","temprano","pérdida","mercado","proceso","sangre","precio",
+    "música","real","humano","recordar","sostener","construir","valor","traer","ocurrir","escribir","sentir",
+    "crear","creer","seguir","comenzar","ganar","considerar","dejar","significar","parecer","ayudar","mostrar",
+    "escuchar","jugar","correr","vivir","caminar","hablar","acordar","describir","explicar","ofrecer","leer",
+    "pasar","crecer","pedir","amar","llevar","romper","dormir","ver","reducir","reclamar","necesitar","aumentar",
+    "decidir","sugerir","servir","apoyar","alcanzar","cortar","quedar","llamar","recibir","elegir","cerrar",
+    "producir","aceptar","esperar","afectar","causar","probar","representar","incluir","intentar","controlar"
   ],
   fr: [
-    "le","la","les","un","une","de","du","des","et","est","en","que","qui","il","au","ce","dans","elle","pas","sur",
-    "par","mais","ou","donc","ni","car","son","sa","ses","mon","ma","mes","nous","vous","ils","elles","être","avoir",
-    "faire","dire","aller","voir","savoir","pouvoir","vouloir","venir","devoir","prendre","trouver","donner","parler",
-    "mettre","passer","partir","rester","monde","maison","temps","homme","femme","enfant","jour","vie","main","eau",
-    "pays","chose","bon","beau","grand","petit","nouveau","jeune","premier","long","fort","vieux","tout","même","bien"
+    "temps","année","personne","façon","jour","homme","femme","enfant","monde","vie","main","partie","endroit",
+    "semaine","entreprise","système","question","travail","gouvernement","nuit","point","maison","eau","chambre",
+    "mère","argent","histoire","fait","mois","droit","étude","livre","oeil","emploi","mot","affaire","sujet",
+    "côté","type","tête","service","ami","père","pouvoir","heure","jeu","ligne","fin","exemple","coeur","corps",
+    "information","pays","famille","visage","problème","voix","esprit","rue","porte","santé","école","nom",
+    "nourriture","ville","espace","sol","forme","air","centre","force","voiture","tour","téléphone","bureau",
+    "lumière","coût","projet","court","couleur","clair","profond","fort","taille","raison","grand","haut","tôt",
+    "perte","marché","sang","prix","musique","réel","humain","souvenir","tenir","construire","valeur","amener",
+    "arriver","écrire","sentir","créer","croire","suivre","commencer","gagner","considérer","laisser","sembler",
+    "aider","montrer","écouter","jouer","courir","vivre","marcher","parler","accepter","décrire","expliquer",
+    "offrir","lire","passer","grandir","demander","aimer","porter","casser","dormir","regarder","réduire",
+    "décider","suggérer","servir","soutenir","atteindre","couper","rester","appeler","recevoir","choisir",
+    "fermer","produire","attendre","affecter","causer","prouver","représenter","inclure","essayer","contrôler"
   ],
   de: [
-    "der","die","das","den","dem","ein","eine","und","ist","in","zu","von","mit","sich","des","auf","für","an","er",
-    "es","sie","auch","nicht","war","wird","nach","bei","noch","wie","so","als","aus","wir","man","aber","oder",
-    "haben","können","soll","muss","werden","ich","du","sein","kommen","gehen","sehen","wissen","geben","nehmen",
-    "sagen","machen","stehen","finden","leben","lassen","Zeit","Mann","Frau","Kind","Haus","Land","Welt","Jahr",
-    "Weg","Wort","Tag","Wasser","Nacht","Hand","Stadt","Leben","gut","groß","alt","neu","jung","lang","klein","stark"
+    "Zeit","Jahr","Person","Weise","Tag","Mann","Frau","Kind","Welt","Leben","Hand","Teil","Ort","Fall","Woche",
+    "Unternehmen","System","Frage","Arbeit","Regierung","Zahl","Nacht","Punkt","Haus","Wasser","Zimmer","Mutter",
+    "Bereich","Geld","Geschichte","Tatsache","Monat","Recht","Studie","Buch","Auge","Stelle","Wort","Geschäft",
+    "Thema","Seite","Art","Kopf","Dienst","Freund","Vater","Macht","Stunde","Spiel","Linie","Ende","Beispiel",
+    "Herz","Zustand","Körper","Information","Land","Familie","Gesicht","Problem","Stimme","Geist","Straße","Tür",
+    "Gesundheit","Schule","Name","Essen","Front","Stadt","Raum","Boden","Form","Luft","Mitte","Kraft","Auto",
+    "Runde","Telefon","Büro","Licht","Kosten","Projekt","kurz","Farbe","klar","tief","stark","Größe","Grund",
+    "groß","hoch","früh","Verlust","Markt","Prozess","Blut","Preis","Musik","echt","menschlich","erinnern",
+    "halten","bauen","Wert","bringen","geschehen","schreiben","fühlen","schaffen","glauben","folgen","beginnen",
+    "gewinnen","bedenken","lassen","bedeuten","scheinen","helfen","zeigen","hören","spielen","laufen","leben",
+    "gehen","sprechen","zustimmen","beschreiben","erklären","anbieten","lesen","verbringen","wachsen","lieben",
+    "tragen","schlafen","beobachten","reduzieren","brauchen","erhöhen","entscheiden","dienen","erreichen",
+    "bleiben","rufen","empfangen","wählen","schließen","produzieren","erwarten","verursachen","vertreten"
   ],
   it: [
-    "il","la","i","le","un","una","di","in","e","che","a","è","per","con","non","si","lo","come","più","ma",
-    "su","anche","sono","ci","tutto","al","mi","dal","essere","avere","fare","dire","andare","vedere","sapere",
-    "potere","volere","venire","dovere","dare","stare","parlare","mondo","casa","tempo","uomo","donna","giorno",
-    "vita","acqua","mano","testa","paese","cosa","parte","modo","bello","grande","piccolo","nuovo","buono","lungo"
+    "tempo","anno","persona","modo","giorno","uomo","donna","bambino","mondo","vita","mano","parte","posto","caso",
+    "settimana","azienda","sistema","domanda","lavoro","governo","numero","notte","punto","casa","acqua","stanza",
+    "madre","zona","soldi","storia","fatto","mese","diritto","studio","libro","occhio","lavoro","parola","affare",
+    "tema","lato","tipo","testa","servizio","amico","padre","potere","ora","gioco","linea","fine","esempio",
+    "cuore","stato","corpo","informazione","paese","famiglia","faccia","problema","voce","mente","strada","porta",
+    "salute","scuola","nome","cibo","fronte","città","spazio","suolo","forma","aria","centro","forza","macchina",
+    "turno","telefono","ufficio","luce","costo","progetto","corto","colore","chiaro","profondo","forte","taglia",
+    "ragione","grande","alto","presto","perdita","mercato","sangue","prezzo","musica","reale","umano","ricordare",
+    "tenere","costruire","valore","portare","accadere","scrivere","sentire","creare","credere","seguire","iniziare",
+    "vincere","considerare","lasciare","significare","sembrare","aiutare","mostrare","ascoltare","giocare","correre",
+    "vivere","camminare","parlare","descrivere","spiegare","offrire","leggere","passare","crescere","chiedere",
+    "amare","dormire","guardare","ridurre","decidere","servire","raggiungere","tagliare","restare","chiamare",
+    "ricevere","scegliere","chiudere","produrre","aspettare","causare","rappresentare","includere","controllare"
   ],
   pt: [
-    "o","a","os","as","um","uma","de","em","e","que","é","por","com","não","se","do","da","para","no","na",
-    "ao","dos","das","mas","ou","quando","mais","também","como","ele","ela","nós","eles","ser","estar","ter",
-    "fazer","ir","ver","saber","poder","querer","vir","dar","ficar","falar","achar","sentir","encontrar","voltar",
-    "mundo","casa","tempo","homem","mulher","dia","vida","água","mão","país","coisa","parte","bom","grande","novo"
+    "tempo","ano","pessoa","maneira","dia","homem","mulher","criança","mundo","vida","mão","parte","lugar","caso",
+    "semana","empresa","sistema","pergunta","trabalho","governo","número","noite","ponto","casa","água","quarto",
+    "mãe","área","dinheiro","história","fato","mês","direito","estudo","livro","olho","emprego","palavra","negócio",
+    "tema","lado","tipo","cabeça","serviço","amigo","pai","poder","hora","jogo","linha","fim","exemplo","coração",
+    "estado","corpo","informação","país","família","rosto","problema","voz","mente","rua","porta","saúde","escola",
+    "nome","comida","frente","cidade","espaço","chão","forma","ar","centro","força","carro","turno","telefone",
+    "escritório","luz","custo","projeto","curto","cor","claro","profundo","forte","tamanho","razão","grande","alto",
+    "cedo","perda","mercado","sangue","preço","música","real","humano","lembrar","segurar","construir","valor",
+    "trazer","acontecer","escrever","sentir","criar","acreditar","seguir","começar","ganhar","considerar","deixar",
+    "significar","parecer","ajudar","mostrar","escutar","jogar","correr","viver","andar","falar","concordar",
+    "descrever","explicar","oferecer","ler","passar","crescer","pedir","amar","carregar","dormir","assistir",
+    "reduzir","decidir","sugerir","servir","apoiar","alcançar","cortar","ficar","chamar","receber","escolher",
+    "fechar","produzir","aceitar","esperar","causar","representar","incluir","tentar","controlar","desenvolver"
   ]
 };
 
@@ -528,8 +593,15 @@ const langMeta = {
 };
 
 let currentLang = 'en';
-let currentWords = [], wordIndex = 0, correctCount = 0, incorrectCount = 0;
+let currentWords = [], wordIndex = 0, correctCount = 0;
+let totalKeystrokes = 0, errorKeystrokes = 0;
 let timeLeft = 60, timerInterval = null, gameActive = false;
+
+// Row tracking — all pre-calculated after render, never read live DOM during play
+let wordRowMap = [];   // wordRowMap[i] = row number of word i
+let rowTopMap = [];    // rowTopMap[r] = offsetTop of that row
+let lineHeight = 36;
+let displayedRow = 0; // which row is currently at the top of the box
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -574,35 +646,89 @@ function setupGame() {
   document.getElementById('langBadge').textContent = `${meta.flag} ${meta.name} · click to change`;
   const bank = wordBanks[currentLang] || wordBanks.en;
   currentWords = Array.from({length:250}, () => bank[Math.floor(Math.random()*bank.length)]);
-  wordIndex = correctCount = incorrectCount = 0;
+
+  wordIndex = 0; correctCount = 0;
+  totalKeystrokes = 0; errorKeystrokes = 0;
+  displayedRow = 0;
+  wordRowMap = []; rowTopMap = [];
   timeLeft = 60; gameActive = false;
+
   document.getElementById('timerDisplay').textContent = '60';
   document.getElementById('timerDisplay').classList.remove('urgent');
+  document.getElementById('liveWpm').textContent = '0';
   document.getElementById('progressBar').style.width = '0%';
+
   const input = document.getElementById('typingInput');
   input.value = ''; input.classList.remove('error'); input.disabled = false;
-  document.getElementById('wordsDisplay').style.marginTop = '0';
+
+  const display = document.getElementById('wordsDisplay');
+  display.style.transition = 'none';
+  display.style.marginTop = '0';
+
   renderWords();
 }
 
 function renderWords() {
-  document.getElementById('wordsDisplay').innerHTML =
-    currentWords.map((w,i) => `<span class="word" id="word-${i}">${w}</span>`).join('');
-  updateWordHighlight();
+  const display = document.getElementById('wordsDisplay');
+  display.innerHTML = currentWords.map((w,i) => `<span class="word" id="word-${i}">${w}</span>`).join('');
+
+  // Wait two frames for layout to settle, then snapshot all positions
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    buildRowMaps();
+    highlightCurrentWord();
+  }));
 }
 
-function updateWordHighlight() {
-  document.querySelectorAll('.word').forEach((el,i) => {
-    el.className = 'word';
-    if (i < wordIndex) el.classList.add('correct');
-    else if (i === wordIndex) el.classList.add('current');
+function buildRowMaps() {
+  wordRowMap = [];
+  rowTopMap  = [];
+  let prevTop = -1, rowNum = -1;
+
+  document.querySelectorAll('.word').forEach((el, i) => {
+    const top = el.offsetTop;
+    if (top !== prevTop) {
+      rowNum++;
+      rowTopMap[rowNum] = top;
+      prevTop = top;
+    }
+    wordRowMap[i] = rowNum;
   });
-  const cur = document.getElementById(`word-${wordIndex}`);
-  const display = document.getElementById('wordsDisplay');
-  if (cur && display) {
-    const lineH = 36;
-    const row = Math.floor(cur.offsetTop / lineH);
-    display.style.marginTop = row > 0 ? `${-(row*lineH)}px` : '0';
+
+  // Measure line height from first two distinct rows
+  if (rowTopMap.length >= 2) {
+    lineHeight = rowTopMap[1] - rowTopMap[0];
+  }
+}
+
+function highlightCurrentWord() {
+  // Update only a window of nearby words for performance
+  const start = Math.max(0, wordIndex - 5);
+  const end   = Math.min(currentWords.length, wordIndex + 40);
+  for (let i = start; i < end; i++) {
+    const el = document.getElementById(`word-${i}`);
+    if (!el) continue;
+    el.className = 'word';
+    if (i < wordIndex)      el.classList.add('correct');
+    else if (i === wordIndex) el.classList.add('current');
+  }
+}
+
+function scrollIfRowComplete() {
+  // Only scroll the display when the current word is on a NEW row
+  // compared to what's currently shown at the top
+  const currentWordRow = wordRowMap[wordIndex] ?? 0;
+
+  // We want the CURRENT word's row to always be visible in the box.
+  // The box shows rows starting from displayedRow.
+  // The box is 148px tall and shows ~4 rows.
+  // Scroll when the current word moves to row displayedRow + 2 (i.e. row 2 is finishing)
+  // so that row 3 becomes the new top — keeping at least 2 rows always ahead.
+  if (currentWordRow > displayedRow + 1) {
+    displayedRow = currentWordRow - 1;
+    const display = document.getElementById('wordsDisplay');
+    const scrollTo = rowTopMap[displayedRow] ?? 0;
+    display.style.transition = 'margin-top 0.25s ease';
+    display.style.marginTop  = `-${scrollTo}px`;
   }
 }
 
@@ -610,57 +736,88 @@ function startGame() {
   gameActive = true;
   const input = document.getElementById('typingInput');
   input.focus(); input.disabled = false;
+
   timerInterval = setInterval(() => {
     timeLeft--;
     const disp = document.getElementById('timerDisplay');
     disp.textContent = timeLeft;
-    document.getElementById('progressBar').style.width = `${((60-timeLeft)/60)*100}%`;
+    document.getElementById('progressBar').style.width = `${((60 - timeLeft) / 60) * 100}%`;
+    const elapsed = (60 - timeLeft) / 60;
+    document.getElementById('liveWpm').textContent = elapsed > 0 ? Math.round(correctCount / elapsed) : 0;
     if (timeLeft <= 10) disp.classList.add('urgent');
     if (timeLeft <= 0)  endGame();
   }, 1000);
+
   input.addEventListener('keydown', handleKeydown);
   input.addEventListener('input',   handleInput);
 }
 
 function handleKeydown(e) {
-  if (!gameActive || e.key !== ' ') return;
-  e.preventDefault();
-  const input = document.getElementById('typingInput');
-  const typed = input.value.trim();
-  if (!typed) return;
-  const el = document.getElementById(`word-${wordIndex}`);
-  if (typed === currentWords[wordIndex]) { correctCount++; el.className='word correct'; }
-  else { incorrectCount++; el.className='word incorrect'; el.textContent=typed; }
-  wordIndex++;
-  input.value = ''; input.classList.remove('error');
-  updateWordHighlight();
-  if (wordIndex >= currentWords.length) endGame();
+  if (!gameActive) return;
+
+  if (e.key === ' ') {
+    e.preventDefault();
+    const input = document.getElementById('typingInput');
+    const typed = input.value.trim();
+    if (!typed) { input.value = ''; return; }
+    if (typed !== currentWords[wordIndex]) {
+      errorKeystrokes++;
+      input.classList.add('error');
+      return;
+    }
+    document.getElementById(`word-${wordIndex}`).className = 'word correct';
+    correctCount++;
+    wordIndex++;
+    input.value = '';
+    input.classList.remove('error');
+    highlightCurrentWord();
+    scrollIfRowComplete();
+    if (wordIndex >= currentWords.length) endGame();
+  }
 }
 
-function handleInput() {
+function handleInput(e) {
   if (!gameActive) return;
-  const typed = document.getElementById('typingInput').value;
-  const input = document.getElementById('typingInput');
-  if (typed.length > 0 && !currentWords[wordIndex].startsWith(typed)) input.classList.add('error');
-  else input.classList.remove('error');
+  const input    = document.getElementById('typingInput');
+  const typed    = input.value;
+  const expected = currentWords[wordIndex];
+
+  if (e.inputType === 'insertText' || e.inputType === 'insertCompositionText') {
+    totalKeystrokes++;
+    if (!expected.startsWith(typed)) {
+      errorKeystrokes++;
+      input.classList.add('error');
+    } else {
+      input.classList.remove('error');
+    }
+  } else if (e.inputType === 'deleteContentBackward') {
+    if (typed.length === 0 || expected.startsWith(typed)) {
+      input.classList.remove('error');
+    }
+  }
 }
 
 function endGame() {
   if (!gameActive) return;
-  gameActive = false; clearInterval(timerInterval);
+  gameActive = false;
+  clearInterval(timerInterval);
+
   const input = document.getElementById('typingInput');
   input.disabled = true;
   input.removeEventListener('keydown', handleKeydown);
-  input.removeEventListener('input', handleInput);
-  const total = correctCount + incorrectCount;
-  const acc   = total > 0 ? Math.round((correctCount/total)*100) : 0;
+  input.removeEventListener('input',   handleInput);
+
+  const acc = totalKeystrokes > 0
+    ? Math.max(0, Math.round(((totalKeystrokes - errorKeystrokes) / totalKeystrokes) * 100))
+    : 100;
+
   setTimeout(() => {
     document.getElementById('resultWpm').textContent      = correctCount;
-    document.getElementById('resultWords').textContent    = total;
+    document.getElementById('resultWords').textContent    = wordIndex;
     document.getElementById('resultAccuracy').textContent = `${acc}%`;
-    document.getElementById('resultCorrect').textContent  = correctCount;
-    let rating = ratings[ratings.length-1][1];
-    for (let i = ratings.length-1; i >= 0; i--) {
+    document.getElementById('resultCorrect').textContent  = `${totalKeystrokes - errorKeystrokes}/${totalKeystrokes}`;
+    let rating = ratings[0][1];
+    for (let i = ratings.length - 1; i >= 0; i--) {
       if (correctCount >= ratings[i][0]) { rating = ratings[i][1]; break; }
     }
     document.getElementById('ratingLine').textContent = `"${rating}"`;
