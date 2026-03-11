@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>clocked ✦</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:          #e8eaee;
+    --surface:     #f2f4f7;
+    --surface2:    #eaecf0;
+    --surface3:    #dde0e6;
+    --border:      rgba(0,0,0,0.08);
+    --orange:      #e86820;
+    --orange-glow: rgba(232,104,32,0.22);
+    --orange-dim:  rgba(232,104,32,0.10);
+    --silver:      #6a7080;
+    --silver-light:#2a2e38;
+    --silver-mid:  #7a8090;
+    --ink:         #1e2028;
+    --soft-ink:    #3a3f4e;
+    --mid:         #8a909e;
+    --error:       #d04040;
+    --error-dim:   rgba(208,64,64,0.10);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  button, input { font-family: 'Space Mono', monospace; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(ellipse 60% 50% at 15% 0%,   rgba(232,104,32,0.10) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 85% 100%,  rgba(232,104,32,0.07) 0%, transparent 65%),
+      radial-gradient(ellipse 80% 60% at 50% 50%,   rgba(255,255,255,0.5) 0%, transparent 70%);
+    color: var(--ink);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 L13.5 10.5 L22 12 L13.5 13.5 L12 22 L10.5 13.5 L2 12 L10.5 10.5 Z' fill='%23f07030' opacity='0.9'/%3E%3C/svg%3E") 12 12, auto;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.045'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999;
+  }
+
+  .site { position: relative; z-index: 1; }
+
+  @keyframes fadeUp      { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes shake       { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+  @keyframes pop         { 0%{transform:scale(1)} 50%{transform:scale(1.07)} 100%{transform:scale(1)} }
+  @keyframes caretBlink  { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes countPop    { 0%{opacity:0;transform:scale(1.5)} 60%{opacity:1;transform:scale(0.94)} 100%{opacity:1;transform:scale(1)} }
+  @keyframes shimmer     { 0%{background-position:200% center} 100%{background-position:-200% center} }
+  @keyframes urgentPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── Screen base ── */
+  .screen {
+    display: none; min-height: 100vh;
+    flex-direction: column; align-items: center; justify-content: center;
+    padding: 60px 24px;
+    animation: fadeUp 0.6s ease both;
+  }
+  .screen.active { display: flex; }
+
+  /* ══════════ LANDING ══════════ */
+  .eyebrow {
+    font-size: 10px; letter-spacing: 0.35em; text-transform: lowercase;
+    color: var(--silver-mid); margin-bottom: 20px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .eyebrow span { display: inline-block; width: 28px; height: 1px; background: linear-gradient(90deg, transparent, var(--silver-mid)); }
+  .eyebrow span:first-child { background: linear-gradient(270deg, transparent, var(--silver-mid)); }
+
+  .hero-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(48px, 10vw, 96px);
+    font-weight: 400; line-height: 1.05;
+    text-align: center; margin-bottom: 10px;
+  }
+  .hero-title .silver-text {
+    background: linear-gradient(135deg, #2a2e38 0%, #5a6070 40%, #3a4050 70%, #1e2028 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero-title .orange-text {
+    font-style: italic;
+    background: linear-gradient(135deg, #ffb070 0%, var(--orange) 40%, #ff6820 70%, #ffb070 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    animation: shimmer 4s linear infinite;
+  }
+  .hero-subtitle {
+    font-size: 13px; letter-spacing: 0.3em; text-transform: lowercase;
+    color: var(--silver-mid); margin-bottom: 6px; text-align: center;
+  }
+
+  .hero-sub-tag {
+    font-size: 11px; letter-spacing: 0.22em; color: var(--mid);
+    text-transform: lowercase; margin-bottom: 48px; text-align: center;
+  }
+
+  .section-label {
+    font-size: 9px; letter-spacing: 0.3em; text-transform: lowercase;
+    color: var(--orange); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; max-width: 480px;
+  }
+  .section-label::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--orange),transparent); opacity:0.35; }
+
+  .lang-grid {
+    display: grid; grid-template-columns: repeat(3,1fr);
+    gap: 10px; width:100%; max-width:480px; margin-bottom:32px;
+  }
+  @media(max-width:480px){ .lang-grid{ grid-template-columns:repeat(2,1fr); } }
+
+  .lang-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 10px;
+    cursor: pointer; transition: all 0.22s ease;
+    text-align: center; position: relative; overflow: hidden;
+  }
+  .lang-btn::before {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.7) 0%, transparent 55%);
+    pointer-events:none; border-radius:14px;
+  }
+  .lang-btn::after {
+    content:''; position:absolute; inset:0;
+    background: radial-gradient(ellipse at 50% 0%, var(--orange-dim) 0%, transparent 70%);
+    opacity:0; transition:opacity 0.22s; border-radius:14px;
+  }
+  .lang-btn:hover { border-color:rgba(240,112,48,0.4); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(240,112,48,0.15); }
+  .lang-btn:hover::after { opacity:1; }
+  .lang-btn.selected { border-color:rgba(240,112,48,0.55); background:var(--surface2); box-shadow:0 0 0 1px rgba(240,112,48,0.18), inset 0 1px 0 rgba(255,255,255,0.06); }
+  .lang-btn.selected::after { opacity:1; }
+  .lang-flag { font-size:22px; display:block; margin-bottom:6px; position:relative; z-index:1; }
+  .lang-name { font-size:9px; letter-spacing:0.12em; color:var(--soft-ink); position:relative; z-index:1; }
+
+  .start-btn {
+    position:relative; overflow:hidden;
+    background: linear-gradient(135deg, #f09050 0%, var(--orange) 50%, #c85020 100%);
+    color:white; border:none; border-radius:12px;
+    padding:16px 52px; font-size:12px; letter-spacing:0.22em; text-transform:lowercase;
+    cursor:pointer; transition:all 0.22s ease;
+    box-shadow:0 4px 24px rgba(240,112,48,0.4), inset 0 1px 0 rgba(255,255,255,0.22);
+  }
+  .start-btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.18) 0%,transparent 55%); border-radius:12px; }
+  .start-btn:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(240,112,48,0.55), inset 0 1px 0 rgba(255,255,255,0.22); }
+  .start-btn:active { transform:translateY(0); }
+
+  /* ══════════ GAME ══════════ */
+  .game-header {
+    display:flex; align-items:center; justify-content:space-between;
+    width:100%; max-width:720px; margin-bottom:20px;
+  }
+  .game-title {
+    font-family:'DM Serif Display',serif; font-size:20px; font-weight:400;
+    background:linear-gradient(135deg,#1e2028,#5a6070);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+  .game-title em {
+    font-style:italic;
+    background:linear-gradient(135deg,#ffb070,var(--orange));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+
+  .timer-display {
+    font-size:36px; font-weight:700; color:var(--orange);
+    letter-spacing:-0.02em; min-width:56px; text-align:right;
+    text-shadow:0 0 20px var(--orange-glow); transition:color 0.3s,text-shadow 0.3s;
+  }
+  .timer-display.urgent { color:var(--error); text-shadow:0 0 20px rgba(224,80,80,0.4); animation:urgentPulse 0.8s ease-in-out infinite; }
+
+  .progress-bar-wrap {
+    width:100%; max-width:720px; height:2px;
+    background:var(--surface3); border-radius:2px; margin-bottom:18px; overflow:hidden;
+  }
+  .progress-bar-fill {
+    height:100%; width:0%;
+    background:linear-gradient(90deg,var(--orange),#ffb070);
+    border-radius:2px; transition:width 0.8s ease;
+    box-shadow:0 0 8px var(--orange-glow);
+  }
+
+  .words-container {
+    width:100%; max-width:720px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px; padding:24px 28px;
+    margin-bottom:16px; position:relative; overflow:hidden; height:112px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.4);
+  }
+  .words-container::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent);
+  }
+  /* fade edges */
+  .words-container::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(to bottom, transparent 60%, var(--surface) 100%);
+    border-radius:16px;
+  }
+
+  .words-display {
+    font-size:18px; line-height:2.0; letter-spacing:0.02em;
+    color:var(--mid); user-select:none; word-wrap:break-word;
+    transition:margin-top 0.15s ease;
+  }
+  .word { display:inline-block; margin-right:8px; border-radius:4px; padding:1px 2px; transition:color 0.12s; }
+  .word.correct  { color:var(--orange); }
+  .word.incorrect{ color:var(--error); background:var(--error-dim); }
+  .word.current  { color:var(--silver-light); border-bottom:2px solid var(--orange); }
+
+  .input-area { width:100%; max-width:720px; }
+  .typing-input {
+    width:100%;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px; padding:16px 20px;
+    font-size:15px; color:var(--ink); outline:none;
+    transition:border-color 0.2s,box-shadow 0.2s;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 12px rgba(0,0,0,0.3);
+    caret-color:var(--orange);
+  }
+  .typing-input::placeholder { color:var(--mid); }
+  .typing-input:focus { border-color:rgba(240,112,48,0.5); box-shadow:0 0 0 3px var(--orange-dim),inset 0 1px 0 rgba(255,255,255,0.04); }
+  .typing-input.error { border-color:var(--error); box-shadow:0 0 0 3px var(--error-dim); animation:shake 0.2s ease; }
+  .typing-input:disabled { opacity:0.4; }
+
+  .input-hint { font-size:9px; letter-spacing:0.18em; color:var(--mid); margin-top:10px; text-align:center; text-transform:lowercase; }
+
+  .lang-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:20px; padding:5px 12px;
+    font-size:10px; color:var(--silver-mid);
+    cursor:pointer; transition:all 0.2s; margin-top:6px;
+  }
+  .lang-badge:hover { border-color:rgba(240,112,48,0.4); color:var(--orange); }
+
+  /* ══════════ COUNTDOWN ══════════ */
+  .countdown-overlay {
+    position:fixed; inset:0;
+    background:rgba(232,234,238,0.92);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    z-index:100; backdrop-filter:blur(8px);
+  }
+  .countdown-overlay.hidden { display:none; }
+  .countdown-number {
+    font-family:'DM Serif Display',serif;
+    font-size:clamp(120px,30vw,200px); font-weight:400; line-height:1;
+    background:linear-gradient(135deg,#ffb070 0%,var(--orange) 50%,#ff6820 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    filter:drop-shadow(0 0 40px rgba(240,112,48,0.5));
+    animation:countPop 0.9s ease both;
+  }
+  .countdown-label { font-size:11px; letter-spacing:0.3em; color:var(--mid); text-transform:lowercase; margin-top:16px; }
+
+  /* ══════════ RESULTS ══════════ */
+  .results-wrap { width:100%; max-width:580px; text-align:center; }
+
+  .results-eyebrow {
+    font-size:10px; letter-spacing:0.3em; color:var(--silver-mid);
+    text-transform:lowercase; margin-bottom:12px;
+    display:flex; align-items:center; justify-content:center; gap:12px;
+  }
+  .results-eyebrow span { display:inline-block; width:28px; height:1px; background:var(--silver-mid); opacity:0.3; }
+
+  .results-title {
+    font-family:'DM Serif Display',serif;
+    font-size:clamp(36px,8vw,64px); font-weight:400; line-height:1.1; margin-bottom:12px;
+    background:linear-gradient(135deg,#1e2028,#5a6070);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+  .results-title em {
+    font-style:italic;
+    background:linear-gradient(135deg,#ffb070,var(--orange));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+
+  .wpm-big {
+    font-family:'DM Serif Display',serif;
+    font-size:clamp(90px,22vw,150px); font-weight:400; line-height:1.0;
+    background:linear-gradient(135deg,#ffb070 0%,var(--orange) 35%,#ff6820 65%,#ffb880 100%);
+    background-size:200% auto;
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    filter:drop-shadow(0 0 30px rgba(240,112,48,0.35));
+    animation:pop 0.5s 0.3s ease both, shimmer 3s 1s linear infinite;
+  }
+  .wpm-label { font-size:10px; letter-spacing:0.3em; color:var(--mid); text-transform:lowercase; margin-bottom:36px; }
+
+  .results-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:32px; }
+  @media(max-width:480px){ .results-stats{ grid-template-columns:repeat(2,1fr); } }
+
+  .result-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:20px 14px;
+    position:relative; overflow:hidden;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .result-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg,transparent,rgba(240,112,48,0.6),transparent);
+  }
+  .result-card::after {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(135deg,rgba(255,255,255,0.6) 0%,transparent 55%);
+    pointer-events:none;
+  }
+  .result-card-val {
+    font-family:'DM Serif Display',serif;
+    font-size:34px; font-weight:400; line-height:1; margin-bottom:6px;
+    background:linear-gradient(135deg,#1e2028,#5a6070);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+  .result-card-label { font-size:8px; letter-spacing:0.2em; text-transform:lowercase; color:var(--mid); }
+
+  .rating-line { font-size:11px; color:var(--silver-mid); font-style:italic; margin-bottom:28px; line-height:1.7; }
+  .decorative-star { color:var(--orange); font-size:11px; letter-spacing:8px; margin:16px 0; opacity:0.4; }
+
+  .actions-row { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+
+  .btn-primary {
+    position:relative; overflow:hidden;
+    background:linear-gradient(135deg,#f09050,var(--orange),#c85020);
+    color:white; border:none; border-radius:11px;
+    padding:14px 36px; font-size:11px; letter-spacing:0.2em; text-transform:lowercase;
+    cursor:pointer; transition:all 0.22s ease;
+    box-shadow:0 4px 20px rgba(240,112,48,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .btn-primary::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.16) 0%,transparent 55%); }
+  .btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(240,112,48,0.5), inset 0 1px 0 rgba(255,255,255,0.2); }
+
+  .btn-ghost {
+    background:var(--surface2); color:var(--soft-ink);
+    border:1px solid var(--border); border-radius:11px;
+    padding:14px 28px; font-size:11px; letter-spacing:0.2em; text-transform:lowercase;
+    cursor:pointer; transition:all 0.22s ease;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .btn-ghost:hover { border-color:rgba(240,112,48,0.4); color:var(--orange); }
+
+</style>
+</head>
+<body>
+
+<div class="site">
+
+  <!-- ══════════════════════════════
+       SCREEN 1 — LANDING
+  ══════════════════════════════════ -->
+  <div class="screen active" id="screen-lang">
+    <div class="eyebrow"><span></span> typing speed test <span></span></div>
+
+    <h1 class="hero-title">
+      <span class="orange-text">clocked</span>
+    </h1>
+    <p class="hero-subtitle">typing game</p>
+
+    <p class="hero-sub-tag">how fast are you, really?</p>
+
+    <div class="section-label">choose language</div>
+
+    <div class="lang-grid">
+      <button class="lang-btn selected" data-lang="en" onclick="selectLang(this)">
+        <span class="lang-flag">🌐</span><span class="lang-name">english</span>
+      </button>
+      <button class="lang-btn" data-lang="es" onclick="selectLang(this)">
+        <span class="lang-flag">🌞</span><span class="lang-name">español</span>
+      </button>
+      <button class="lang-btn" data-lang="fr" onclick="selectLang(this)">
+        <span class="lang-flag">🥐</span><span class="lang-name">français</span>
+      </button>
+      <button class="lang-btn" data-lang="de" onclick="selectLang(this)">
+        <span class="lang-flag">🦅</span><span class="lang-name">deutsch</span>
+      </button>
+      <button class="lang-btn" data-lang="it" onclick="selectLang(this)">
+        <span class="lang-flag">🍕</span><span class="lang-name">italiano</span>
+      </button>
+      <button class="lang-btn" data-lang="pt" onclick="selectLang(this)">
+        <span class="lang-flag">🌊</span><span class="lang-name">português</span>
+      </button>
+    </div>
+
+    <button class="start-btn" onclick="beginCountdown()">start typing →</button>
+  </div>
+
+  <!-- ══════════════════════════════
+       SCREEN 2 — GAME
+  ══════════════════════════════════ -->
+  <div class="screen" id="screen-game" style="justify-content:flex-start;padding-top:72px;">
+    <div class="game-header">
+      <div>
+        <div class="game-title"><em>clocked</em></div>
+        <div id="langBadge" class="lang-badge" onclick="goToLang()">🌐 english · click to change</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="timer-display" id="timerDisplay">60</div>
+        <div style="font-size:9px;color:var(--mid);letter-spacing:0.2em;text-transform:lowercase;margin-top:2px;">seconds left</div>
+      </div>
+    </div>
+
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressBar"></div></div>
+
+    <div class="words-container">
+      <div class="words-display" id="wordsDisplay"></div>
+    </div>
+
+    <div class="input-area">
+      <input type="text" class="typing-input" id="typingInput"
+        placeholder="start typing here…"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <div class="input-hint">space to confirm · backspace to correct</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       SCREEN 3 — RESULTS
+  ══════════════════════════════════ -->
+  <div class="screen" id="screen-results">
+    <div class="results-wrap">
+      <div class="results-eyebrow"><span></span> time's up <span></span></div>
+      <h2 class="results-title">you got <em>clocked</em></h2>
+      <div class="wpm-big" id="resultWpm">—</div>
+      <div class="wpm-label">words per minute</div>
+      <div class="results-stats">
+        <div class="result-card">
+          <div class="result-card-val" id="resultWords">—</div>
+          <div class="result-card-label">words typed</div>
+        </div>
+        <div class="result-card">
+          <div class="result-card-val" id="resultAccuracy">—</div>
+          <div class="result-card-label">accuracy</div>
+        </div>
+        <div class="result-card">
+          <div class="result-card-val" id="resultCorrect">—</div>
+          <div class="result-card-label">correct</div>
+        </div>
+      </div>
+      <div class="rating-line" id="ratingLine"></div>
+      <div class="decorative-star">✦ ✦ ✦</div>
+      <div class="actions-row">
+        <button class="btn-primary" onclick="retryGame()">try again</button>
+        <button class="btn-ghost"   onclick="goToLang()">change language</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Countdown -->
+<div class="countdown-overlay hidden" id="countdownOverlay">
+  <div class="countdown-number" id="countdownNum">3</div>
+  <div class="countdown-label">get ready to type</div>
+</div>
+
+<script>
+const wordBanks = {
+  en: [
+    "the","be","to","of","and","a","in","that","have","it","for","not","on","with","he","as","you","do","at",
+    "this","but","his","by","from","they","we","say","her","she","or","an","will","my","one","all","would","there",
+    "their","what","so","up","out","if","about","who","get","which","go","me","when","make","can","like","time","no",
+    "just","him","know","take","people","into","year","your","good","some","could","them","see","other","than","then",
+    "now","look","only","come","its","over","think","also","back","after","use","two","how","our","work","first","well",
+    "way","even","new","want","because","any","these","give","day","most","great","little","very","still","name","should",
+    "home","big","under","never","last","long","right","move","place","thing","hand","high","every","near","food","between",
+    "school","keep","feet","land","side","without","once","life","enough","sometimes","head","above","kind","almost","live",
+    "page","earth","need","far","hold","close","open","walk","paper","often","always","music","both","book","until","mile",
+    "river","car","city","tree","since","hard","start","might","story","left","few","while","along","next","white","air"
+  ],
+  es: [
+    "el","la","los","las","un","una","de","en","y","que","a","es","por","con","no","se","lo","como","más","pero",
+    "sus","le","ya","o","este","porque","esta","entre","cuando","muy","sin","sobre","también","me","hasta","hay",
+    "donde","desde","todo","nos","durante","todos","uno","les","ni","otros","ese","eso","ellos","tiempo","vida",
+    "casa","trabajo","mundo","persona","mujer","hombre","día","parte","lugar","forma","año","agua","bien","poder",
+    "nuevo","amor","manera","ciudad","decir","hacer","ser","estar","tener","dar","ver","querer","llegar","pasar",
+    "poner","seguir","encontrar","llamar","venir","pensar","salir","volver","tomar","saber","cada","mismo","tanto"
+  ],
+  fr: [
+    "le","la","les","un","une","de","du","des","et","est","en","que","qui","il","au","ce","dans","elle","pas","sur",
+    "par","mais","ou","donc","ni","car","son","sa","ses","mon","ma","mes","nous","vous","ils","elles","être","avoir",
+    "faire","dire","aller","voir","savoir","pouvoir","vouloir","venir","devoir","prendre","trouver","donner","parler",
+    "mettre","passer","partir","rester","monde","maison","temps","homme","femme","enfant","jour","vie","main","eau",
+    "pays","chose","bon","beau","grand","petit","nouveau","jeune","premier","long","fort","vieux","tout","même","bien"
+  ],
+  de: [
+    "der","die","das","den","dem","ein","eine","und","ist","in","zu","von","mit","sich","des","auf","für","an","er",
+    "es","sie","auch","nicht","war","wird","nach","bei","noch","wie","so","als","aus","wir","man","aber","oder",
+    "haben","können","soll","muss","werden","ich","du","sein","kommen","gehen","sehen","wissen","geben","nehmen",
+    "sagen","machen","stehen","finden","leben","lassen","Zeit","Mann","Frau","Kind","Haus","Land","Welt","Jahr",
+    "Weg","Wort","Tag","Wasser","Nacht","Hand","Stadt","Leben","gut","groß","alt","neu","jung","lang","klein","stark"
+  ],
+  it: [
+    "il","la","i","le","un","una","di","in","e","che","a","è","per","con","non","si","lo","come","più","ma",
+    "su","anche","sono","ci","tutto","al","mi","dal","essere","avere","fare","dire","andare","vedere","sapere",
+    "potere","volere","venire","dovere","dare","stare","parlare","mondo","casa","tempo","uomo","donna","giorno",
+    "vita","acqua","mano","testa","paese","cosa","parte","modo","bello","grande","piccolo","nuovo","buono","lungo"
+  ],
+  pt: [
+    "o","a","os","as","um","uma","de","em","e","que","é","por","com","não","se","do","da","para","no","na",
+    "ao","dos","das","mas","ou","quando","mais","também","como","ele","ela","nós","eles","ser","estar","ter",
+    "fazer","ir","ver","saber","poder","querer","vir","dar","ficar","falar","achar","sentir","encontrar","voltar",
+    "mundo","casa","tempo","homem","mulher","dia","vida","água","mão","país","coisa","parte","bom","grande","novo"
+  ]
+};
+
+const ratings = [
+  [0,   "just warming up — every fast typist started here."],
+  [20,  "a gentle pace. steady hands build fast habits."],
+  [35,  "average territory. you're about to leave it."],
+  [50,  "above average — you've clearly done this before."],
+  [65,  "fast. noticeably, impressively fast."],
+  [80,  "very fast. the keyboard barely notices you leaving."],
+  [100, "exceptional. you type faster than most people think."],
+  [120, "elite level. you might be part machine."],
+];
+
+const langMeta = {
+  en:{flag:'🌐',name:'english'}, es:{flag:'🌞',name:'español'},
+  fr:{flag:'🥐',name:'français'}, de:{flag:'🦅',name:'deutsch'},
+  it:{flag:'🍕',name:'italiano'}, pt:{flag:'🌊',name:'português'},
+};
+
+let currentLang = 'en';
+let currentWords = [], wordIndex = 0, correctCount = 0, incorrectCount = 0;
+let timeLeft = 60, timerInterval = null, gameActive = false;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const s = document.getElementById(id);
+  s.classList.add('active');
+  s.style.animation = 'none'; s.offsetHeight; s.style.animation = '';
+}
+function goToLang() { showScreen('screen-lang'); }
+
+function selectLang(btn) {
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  currentLang = btn.dataset.lang;
+}
+
+function beginCountdown() {
+  showScreen('screen-game');
+  setupGame();
+  const overlay = document.getElementById('countdownOverlay');
+  const numEl   = document.getElementById('countdownNum');
+  overlay.classList.remove('hidden');
+  let count = 3;
+  numEl.textContent = count;
+
+  const iv = setInterval(() => {
+    count--;
+    if (count === 0) {
+      numEl.textContent = 'go!';
+    } else if (count < 0) {
+      clearInterval(iv);
+      overlay.classList.add('hidden');
+      startGame();
+    } else {
+      numEl.textContent = count;
+      numEl.style.animation = 'none'; numEl.offsetHeight; numEl.style.animation = 'countPop 0.9s ease both';
+    }
+  }, 900);
+}
+
+function setupGame() {
+  const meta = langMeta[currentLang];
+  document.getElementById('langBadge').textContent = `${meta.flag} ${meta.name} · click to change`;
+  const bank = wordBanks[currentLang] || wordBanks.en;
+  currentWords = Array.from({length:250}, () => bank[Math.floor(Math.random()*bank.length)]);
+  wordIndex = correctCount = incorrectCount = 0;
+  timeLeft = 60; gameActive = false;
+  document.getElementById('timerDisplay').textContent = '60';
+  document.getElementById('timerDisplay').classList.remove('urgent');
+  document.getElementById('progressBar').style.width = '0%';
+  const input = document.getElementById('typingInput');
+  input.value = ''; input.classList.remove('error'); input.disabled = false;
+  document.getElementById('wordsDisplay').style.marginTop = '0';
+  renderWords();
+}
+
+function renderWords() {
+  document.getElementById('wordsDisplay').innerHTML =
+    currentWords.map((w,i) => `<span class="word" id="word-${i}">${w}</span>`).join('');
+  updateWordHighlight();
+}
+
+function updateWordHighlight() {
+  document.querySelectorAll('.word').forEach((el,i) => {
+    el.className = 'word';
+    if (i < wordIndex) el.classList.add('correct');
+    else if (i === wordIndex) el.classList.add('current');
+  });
+  const cur = document.getElementById(`word-${wordIndex}`);
+  const display = document.getElementById('wordsDisplay');
+  if (cur && display) {
+    const lineH = 36;
+    const row = Math.floor(cur.offsetTop / lineH);
+    display.style.marginTop = row > 0 ? `${-(row*lineH)}px` : '0';
+  }
+}
+
+function startGame() {
+  gameActive = true;
+  const input = document.getElementById('typingInput');
+  input.focus(); input.disabled = false;
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    const disp = document.getElementById('timerDisplay');
+    disp.textContent = timeLeft;
+    document.getElementById('progressBar').style.width = `${((60-timeLeft)/60)*100}%`;
+    if (timeLeft <= 10) disp.classList.add('urgent');
+    if (timeLeft <= 0)  endGame();
+  }, 1000);
+  input.addEventListener('keydown', handleKeydown);
+  input.addEventListener('input',   handleInput);
+}
+
+function handleKeydown(e) {
+  if (!gameActive || e.key !== ' ') return;
+  e.preventDefault();
+  const input = document.getElementById('typingInput');
+  const typed = input.value.trim();
+  if (!typed) return;
+  const el = document.getElementById(`word-${wordIndex}`);
+  if (typed === currentWords[wordIndex]) { correctCount++; el.className='word correct'; }
+  else { incorrectCount++; el.className='word incorrect'; el.textContent=typed; }
+  wordIndex++;
+  input.value = ''; input.classList.remove('error');
+  updateWordHighlight();
+  if (wordIndex >= currentWords.length) endGame();
+}
+
+function handleInput() {
+  if (!gameActive) return;
+  const typed = document.getElementById('typingInput').value;
+  const input = document.getElementById('typingInput');
+  if (typed.length > 0 && !currentWords[wordIndex].startsWith(typed)) input.classList.add('error');
+  else input.classList.remove('error');
+}
+
+function endGame() {
+  if (!gameActive) return;
+  gameActive = false; clearInterval(timerInterval);
+  const input = document.getElementById('typingInput');
+  input.disabled = true;
+  input.removeEventListener('keydown', handleKeydown);
+  input.removeEventListener('input', handleInput);
+  const total = correctCount + incorrectCount;
+  const acc   = total > 0 ? Math.round((correctCount/total)*100) : 0;
+  setTimeout(() => {
+    document.getElementById('resultWpm').textContent      = correctCount;
+    document.getElementById('resultWords').textContent    = total;
+    document.getElementById('resultAccuracy').textContent = `${acc}%`;
+    document.getElementById('resultCorrect').textContent  = correctCount;
+    let rating = ratings[ratings.length-1][1];
+    for (let i = ratings.length-1; i >= 0; i--) {
+      if (correctCount >= ratings[i][0]) { rating = ratings[i][1]; break; }
+    }
+    document.getElementById('ratingLine').textContent = `"${rating}"`;
+    showScreen('screen-results');
+  }, 300);
+}
+
+function retryGame() { beginCountdown(); }
+
+showScreen('screen-lang');
+</script>
+</body>
+</html>
